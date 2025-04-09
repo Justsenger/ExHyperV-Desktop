@@ -33,7 +33,7 @@ public:
 		// 初始化GUID
 		const wchar_t* clsid_str = L"{a42e7cda-d03f-480c-9cc2-a4de20abb878}"; // 请查阅文档，这个是所有都能接收
 		CLSIDFromString(clsid_str, &VmID);
-		clsid_str = L"{2b174636-bc38-474e-9396-b87f3877c1e8}";
+		clsid_str = L"{1f6be6bc-3e37-4d4a-97e3-46e7a5bdf739}";
 		CLSIDFromString(clsid_str, &ServiceID); //服务GUID
 
 		CONST GUID* vmId = &VmID;
