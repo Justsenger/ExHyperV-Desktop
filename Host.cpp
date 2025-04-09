@@ -63,7 +63,7 @@ DEFINE_GUID(HV_GUID_ZERO,
     0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0);
 
 
-#define RECEIVE_BUFFER_SIZE (4*1920*1080)  // 8MB 缓冲区大小
+#define RECEIVE_BUFFER_SIZE (400*1920*1080)  // 8MB 缓冲区大小
 
 // 设置接收缓冲区大小
 void SetSocketBufferSize(SOCKET ClientSocket) {
@@ -85,41 +85,18 @@ void PrintSocketBufferSize(SOCKET ClientSocket) {
 
 
 std::vector<BYTE> ReceiveImage(SOCKET ClientSocket, int imageSize) {
-
-    // 设置接收缓冲区大小为8MB
     SetSocketBufferSize(ClientSocket);
-    PrintSocketBufferSize(ClientSocket);
-
-    // 调试：打印接收到的图像大小
-     //printf("接收的图像大小: %zu 字节\n", imageSize);
-
-    // 创建一个足够大的缓冲区来接收完整的图像数据
     std::vector<BYTE> imageData(imageSize);
-    size_t totalBytesReceived = 0;
-
-
-    int iResult;
-    // 分批接收图像数据
-    while (totalBytesReceived < imageSize) {
-        // 每次尽量接收大的数据块
-        iResult = recv(ClientSocket, (char*)(imageData.data() + totalBytesReceived),
-            imageSize - totalBytesReceived, 0);
-
-        if (iResult == SOCKET_ERROR) {
-            printf("接收图像数据失败，错误代码：%d\n", WSAGetLastError());
-            return {};
-        }
-
-        totalBytesReceived += iResult;
-
-        // 调试：显示接收到的字节数
-         //printf("接收到 %zu/%zu 字节\n", totalBytesReceived, imageSize);
+    int received = recv(ClientSocket, (char*)imageData.data(), imageSize, MSG_WAITALL);
+    if (received != imageSize) {
+        printf("接收失败，错误代码：%d\n", WSAGetLastError());
+        return {};
     }
-
-    // printf("成功接收完整图像数据，总字节数：%zu\n", totalBytesReceived);
-
     return imageData;
 }
+
+
+
 
 int main() {
     WSADATA wsaData;
@@ -294,6 +271,8 @@ int main() {
                 printf("接收图像失败或客户端断开连接\n");
                 break; // 如果接收失败或连接关闭，退出
             }
+
+
 
             // 显示接收到的图像
             //printf("显示接收到的图像\n");
