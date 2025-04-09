@@ -1,1 +1,12 @@
-﻿  ExHyperV-Desktop.vcxproj -> C:\Github\ExHyperV-Desktop\x64\Debug\ExHyperV-Desktop.exe
+﻿  Host.cpp
+C:\Github\ExHyperV-Desktop\Host.cpp(59,1): warning C4002: 类函数宏的调用“DEFINE_GUID”参数过多
+C:\Github\ExHyperV-Desktop\Host.cpp(61,1): warning C4002: 类函数宏的调用“DEFINE_GUID”参数过多
+C:\Github\ExHyperV-Desktop\Host.cpp(109,23): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据
+C:\Github\ExHyperV-Desktop\Host.cpp(240,56): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据
+C:\Github\ExHyperV-Desktop\Host.cpp(314,54): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据
+  VM.cpp
+C:\Github\ExHyperV-Desktop\VM.cpp(113,50): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据
+C:\Github\ExHyperV-Desktop\VM.cpp(145,17): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+  正在生成代码...
+VM.obj : error LNK2005: main 已经在 Host.obj 中定义
+C:\Github\ExHyperV-Desktop\x64\Debug\ExHyperV-Desktop.exe : fatal error LNK1169: 找到一个或多个多重定义的符号

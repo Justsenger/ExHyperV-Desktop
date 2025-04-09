@@ -141,18 +141,9 @@ public:
 	}
 
 	bool SendImage(const std::vector<BYTE>& imageData) {
-		//发送一张图片，首先发送图片大小，然后发送图片数据。
-
-		// 发送图像数据的大小.。这里应该优化为，第一次发送后就不再发送，但是马上要换成Dx，就再等等。
-		int imageSize = imageData.size();
-		int iResult = send(ConnectSocket, (char*)&imageSize, sizeof(imageSize), 0);
-		if (iResult == SOCKET_ERROR) {
-			printf("发送图像大小失败，错误代码：%d\n", WSAGetLastError());
-			return false;
-		}
-
 		// 发送图像数据
-		iResult = send(ConnectSocket, (char*)imageData.data(), imageSize, 0);
+		int imageSize = imageData.size();
+		int iResult = send(ConnectSocket, (char*)imageData.data(), imageSize, 0);
 		if (iResult == SOCKET_ERROR) {
 			printf("发送图像数据失败，错误代码：%d\n", WSAGetLastError());
 			return false;
@@ -170,6 +161,7 @@ public:
 		}
 		return true;
 	}
+
 private:
 	SOCKET ConnectSocket;
 };
@@ -223,6 +215,48 @@ int main(int argc, CHAR* argv[])
 	std::string msg;
 	Client client;
 	if (!client.Start()) return 1;
+
+
+	// 协商阶段：发送分辨率、图像大小等信息
+	int width = GetSystemMetrics(SM_CXSCREEN);
+	int height = GetSystemMetrics(SM_CYSCREEN);
+	int imageSize = width * height * 4;  // 假设每个像素占用4字节（RGBA格式）
+
+	// 发送分辨率和图像大小
+	if (!client.Send((char*)&width)) {
+		printf("发送宽度失败\n");
+		client.Stop();
+		return 1;
+	}
+
+	if (!client.Send((char*)&height)) {
+		printf("发送高度失败\n");
+		client.Stop();
+		return 1;
+	}
+
+	if (!client.Send((char*)&imageSize)) {
+		printf("发送图像大小失败\n");
+		client.Stop();
+		return 1;
+	}
+
+	// 等待服务器确认协商成功
+	if (!client.Recv()) {
+		printf("协商失败，未收到服务器确认\n");
+		client.Stop();
+		return 1;
+	}
+
+	// 协商成功，开始发送图像数据
+	while (true) {
+		std::vector<BYTE> imageData = CaptureScreen();
+		if (!client.SendImage(imageData)) {
+			printf("图像发送失败\n");
+			break;
+		}
+	}
+
 	while (true) {
 		std::vector<BYTE> imageData = CaptureScreen();
 		if (!client.SendImage(imageData)) {
