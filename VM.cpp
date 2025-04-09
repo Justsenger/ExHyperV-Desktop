@@ -10,7 +10,7 @@
 #include <vector>
 #include <fstream>
 #pragma comment(lib, "Ws2_32.lib")
-
+#include <sstream>
 //HvSock结构
 struct SOCKADDR_HV
 {
@@ -215,8 +215,10 @@ int main(int argc, CHAR* argv[])
 	std::string msg;
 	Client client;
 	if (!client.Start()) return 1;
+	// 定义一个分隔符，假设我们使用 | 来分隔
+	const char delimiter = '|';
 
-
+	// 获取屏幕分辨率
 	int width = GetSystemMetrics(SM_CXSCREEN);
 	int height = GetSystemMetrics(SM_CYSCREEN);
 
@@ -234,21 +236,20 @@ int main(int argc, CHAR* argv[])
 
 	// 输出图像大小的调试信息
 	printf("计算出的图像大小: %d 字节\n", imageSize);
-	// 发送分辨率和图像大小
-	if (!client.Send((char*)&width)) {
-		printf("发送宽度失败\n");
-		client.Stop();
-		return 1;
-	}
 
-	if (!client.Send((char*)&height)) {
-		printf("发送高度失败\n");
-		client.Stop();
-		return 1;
-	}
+	// 使用字符串流将参数拼接成字符串
+	std::stringstream ss;
+	ss << width << delimiter << height << delimiter << imageSize << delimiter;
 
-	if (!client.Send((char*)&imageSize)) {
-		printf("发送图像大小失败\n");
+	// 获取拼接后的字符串
+	std::string dataToSend = ss.str();
+
+	// 将字符串转换为 C 风格字符串
+	const char* cstr = dataToSend.c_str();
+
+	// 发送所有数据
+	if (!client.Send(const_cast<char*>(cstr))) {
+		printf("发送图像参数失败\n");
 		client.Stop();
 		return 1;
 	}

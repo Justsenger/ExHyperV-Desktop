@@ -10,6 +10,8 @@
 #pragma comment(lib, "Ws2_32.lib")
 #include <fstream>
 #include <Windows.h>
+#include <sstream>
+
 
 std::vector<BYTE> g_imageData;  // 存储全局的图像数据
 
@@ -210,37 +212,45 @@ int main() {
 
 
 
-        int width=0, height = 0, imageSize = 0;
+        // 定义分隔符
+        const char delimiter = '|';
 
-        // 接收宽度
-        int iResult = recv(ClientSocket, (char*)&width, sizeof(width), 0);
+        // 接收数据
+        char buffer[1024]; // 假设最大长度为1024
+        int iResult = recv(ClientSocket, buffer, sizeof(buffer) - 1, 0);
         if (iResult == SOCKET_ERROR) {
-            printf("接收宽度失败: %d\n", WSAGetLastError());
+            printf("接收数据失败: %d\n", WSAGetLastError());
             return false;
         }
-        else {
-            printf("接收宽度: %d\n", width);
-        }
 
-        // 接收高度
-        iResult = recv(ClientSocket, (char*)&height, sizeof(height), 0);
-        if (iResult == SOCKET_ERROR) {
-            printf("接收高度失败: %d\n", WSAGetLastError());
-            return false;
-        }
-        else {
-            printf("接收高度: %d\n", height);
-        }
+        // 确保数据以空字符结束
+        buffer[iResult] = '\0';
 
-        // 接收图像大小
-        iResult = recv(ClientSocket, (char*)&imageSize, sizeof(imageSize), 0);
-        if (iResult == SOCKET_ERROR) {
-            printf("接收图像大小失败: %d\n", WSAGetLastError());
-            return false;
-        }
-        else {
-            printf("接收图像大小: %d\n", imageSize);
-        }
+        // 解析数据
+        std::string receivedData(buffer);
+        std::stringstream ss(receivedData);
+        int width, height, imageSize;
+
+        // 解析宽度
+        std::string token;
+        std::getline(ss, token, delimiter);
+        width = std::stoi(token);  // 转为整数
+        printf("接收宽度: %d\n", width);
+
+        // 解析高度
+        std::getline(ss, token, delimiter);
+        height = std::stoi(token);  // 转为整数
+        printf("接收高度: %d\n", height);
+
+        // 解析图像大小
+        std::getline(ss, token, delimiter);
+        imageSize = std::stoi(token);  // 转为整数
+        printf("接收图像大小: %d\n", imageSize);
+
+        // 如果需要可以进一步接收图像数据，处理逻辑可以接着执行
+
+
+
 
         printf("接收到协商信息：宽度 = %d, 高度 = %d, 图像大小 = %d\n", width, height, imageSize);
 
