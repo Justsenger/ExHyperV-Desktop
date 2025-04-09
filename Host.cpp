@@ -63,7 +63,7 @@ DEFINE_GUID(HV_GUID_ZERO,
     0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0);
 
 
-#define RECEIVE_BUFFER_SIZE (8 * 1024 * 1024)  // 8MB 缓冲区大小
+#define RECEIVE_BUFFER_SIZE (4*1920*1080)  // 8MB 缓冲区大小
 
 // 设置接收缓冲区大小
 void SetSocketBufferSize(SOCKET ClientSocket) {
@@ -84,26 +84,21 @@ void PrintSocketBufferSize(SOCKET ClientSocket) {
 
 
 
-std::vector<BYTE> ReceiveImage(SOCKET ClientSocket) {
-    // 接收图像数据的大小
-    size_t imageSize = 0;
+std::vector<BYTE> ReceiveImage(SOCKET ClientSocket, int imageSize) {
+
     // 设置接收缓冲区大小为8MB
     SetSocketBufferSize(ClientSocket);
     PrintSocketBufferSize(ClientSocket);
 
-    int iResult = recv(ClientSocket, (char*)&imageSize, sizeof(imageSize), 0);
-    if (iResult <= 0) {
-        printf("接收图像大小失败，错误代码：%d\n", WSAGetLastError());
-        return {};
-    }
-
     // 调试：打印接收到的图像大小
-    // printf("接收的图像大小: %zu 字节\n", imageSize);
+     //printf("接收的图像大小: %zu 字节\n", imageSize);
 
     // 创建一个足够大的缓冲区来接收完整的图像数据
     std::vector<BYTE> imageData(imageSize);
     size_t totalBytesReceived = 0;
 
+
+    int iResult;
     // 分批接收图像数据
     while (totalBytesReceived < imageSize) {
         // 每次尽量接收大的数据块
@@ -118,14 +113,13 @@ std::vector<BYTE> ReceiveImage(SOCKET ClientSocket) {
         totalBytesReceived += iResult;
 
         // 调试：显示接收到的字节数
-         printf("接收到 %zu/%zu 字节\n", totalBytesReceived, imageSize);
+         //printf("接收到 %zu/%zu 字节\n", totalBytesReceived, imageSize);
     }
 
     // printf("成功接收完整图像数据，总字节数：%zu\n", totalBytesReceived);
 
     return imageData;
 }
-
 
 int main() {
     WSADATA wsaData;
@@ -235,22 +229,14 @@ int main() {
         std::string token;
         std::getline(ss, token, delimiter);
         width = std::stoi(token);  // 转为整数
-        printf("接收宽度: %d\n", width);
 
         // 解析高度
         std::getline(ss, token, delimiter);
         height = std::stoi(token);  // 转为整数
-        printf("接收高度: %d\n", height);
 
         // 解析图像大小
         std::getline(ss, token, delimiter);
         imageSize = std::stoi(token);  // 转为整数
-        printf("接收图像大小: %d\n", imageSize);
-
-        // 如果需要可以进一步接收图像数据，处理逻辑可以接着执行
-
-
-
 
         printf("接收到协商信息：宽度 = %d, 高度 = %d, 图像大小 = %d\n", width, height, imageSize);
 
@@ -303,8 +289,7 @@ int main() {
             }
 
 
-            // 接收图像数据
-            std::vector<BYTE> imageData = ReceiveImage(ClientSocket);
+            std::vector<BYTE> imageData = ReceiveImage(ClientSocket, imageSize);
             if (imageData.empty()) {
                 printf("接收图像失败或客户端断开连接\n");
                 break; // 如果接收失败或连接关闭，退出
@@ -326,12 +311,12 @@ int main() {
             // 调用 DisplayImage 函数，传入客户区的宽高
             DisplayImage(hdc, imageData, width, height, clientWidth, clientHeight);
 
-            // 发送确认消息给客户端，表示已经收到图像数据
-            char confirmMessage[100];
-            imageCount++;
-            snprintf(confirmMessage, sizeof(confirmMessage), "已接收的完整图像数：%d", imageCount);
-            send(ClientSocket, confirmMessage, strlen(confirmMessage), 0);
-            g_imageData = imageData;
+            //// 发送确认消息给客户端，表示已经收到图像数据
+            //char confirmMessage[100];
+            //imageCount++;
+            //snprintf(confirmMessage, sizeof(confirmMessage), "已接收的完整图像数：%d", imageCount);
+            //send(ClientSocket, confirmMessage, strlen(confirmMessage), 0);
+            //g_imageData = imageData;
 
         }
 
