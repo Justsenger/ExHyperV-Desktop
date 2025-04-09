@@ -11,6 +11,16 @@
 #include <fstream>
 #pragma comment(lib, "Ws2_32.lib")
 #include <sstream>
+
+#include <windows.h>
+#include <stdio.h>
+#include <vector>
+// 全局帧率统计变量
+unsigned long frameCount = 0;
+DWORD lastReportTime = GetTickCount();
+
+
+
 //HvSock结构
 struct SOCKADDR_HV
 {
@@ -22,7 +32,7 @@ struct SOCKADDR_HV
 
 class Client {
 public:
-	Client() {ConnectSocket = INVALID_SOCKET;} //初始化函数
+	Client() { ConnectSocket = INVALID_SOCKET; } //初始化函数
 
 	//创建连接
 	bool Start() {
@@ -47,7 +57,7 @@ public:
 			return false;
 		}
 
-		struct addrinfo* result = NULL,* ptr = NULL,hints;
+		struct addrinfo* result = NULL, * ptr = NULL, hints;
 
 		//设置协议为Hvsocket
 		ZeroMemory(&clientService, sizeof(clientService));
@@ -115,7 +125,7 @@ public:
 		if (iResult == SOCKET_ERROR)
 		{
 			printf("发送失败: %d\n", WSAGetLastError());
-			closesocket(ConnectSocket); 
+			closesocket(ConnectSocket);
 			WSACleanup();
 			Stop();
 			return false;
@@ -150,15 +160,15 @@ public:
 		}
 
 		// 等待服务器确认图像已接收
-		char buffer[DEFAULT_BUFFER_LENGTH];
-		iResult = recv(ConnectSocket, buffer, sizeof(buffer) - 1, 0);  // 留出一个空间给空字符
-		if (iResult > 0) {
-			buffer[iResult] = '\0';  // 确保字符串终止
-			printf("收到来自服务器的确认信息：%s\n", buffer);
-		}
-		else {
-			printf("没有收到服务器的确认信息。\n");
-		}
+		//char buffer[DEFAULT_BUFFER_LENGTH];
+		//iResult = recv(ConnectSocket, buffer, sizeof(buffer) - 1, 0);  // 留出一个空间给空字符
+		//if (iResult > 0) {
+		//	buffer[iResult] = '\0';  // 确保字符串终止
+		//	printf("收到来自服务器的确认信息：%s\n", buffer);
+		//}
+		//else {
+		//	printf("没有收到服务器的确认信息。\n");
+		//}
 		return true;
 	}
 
@@ -170,68 +180,69 @@ private:
 // 截取屏幕并返回图像数据
 // 截取屏幕并保存图像数据
 std::vector<BYTE> CaptureScreen() {
-    // 获取屏幕的设备上下文
-    HDC hdcScreen = GetDC(NULL);
+	// 获取屏幕的设备上下文
+	HDC hdcScreen = GetDC(NULL);
 
-    // 获取屏幕宽度和高度
-    int width = GetSystemMetrics(SM_CXSCREEN);
-    int height = GetSystemMetrics(SM_CYSCREEN);
+	// 获取屏幕宽度和高度
+	int width = GetSystemMetrics(SM_CXSCREEN);
+	int height = GetSystemMetrics(SM_CYSCREEN);
 
-    // 创建内存设备上下文
-    HDC hdcMem = CreateCompatibleDC(hdcScreen);
+	// 创建内存设备上下文
+	HDC hdcMem = CreateCompatibleDC(hdcScreen);
 
-    // 创建与屏幕相同大小的位图
-    HBITMAP hBitmap = CreateCompatibleBitmap(hdcScreen, width, height);
+	// 创建与屏幕相同大小的位图
+	HBITMAP hBitmap = CreateCompatibleBitmap(hdcScreen, width, height);
 
-    // 将屏幕内容复制到位图
-    SelectObject(hdcMem, hBitmap);
-    BitBlt(hdcMem, 0, 0, width, height, hdcScreen, 0, 0, SRCCOPY);
+	// 将屏幕内容复制到位图
+	SelectObject(hdcMem, hBitmap);
+	BitBlt(hdcMem, 0, 0, width, height, hdcScreen, 0, 0, SRCCOPY);
 
-    // 获取位图的位图信息
-    BITMAP bitmap;
-    GetObject(hBitmap, sizeof(bitmap), &bitmap);
+	// 获取位图的位图信息
+	BITMAP bitmap;
+	GetObject(hBitmap, sizeof(bitmap), &bitmap);
 
-    // 获取位图数据并保存到缓冲区
-    int imgSize = bitmap.bmWidth * bitmap.bmHeight * 4;  // 每个像素 4 字节 (RGBA)
-    std::vector<BYTE> imageData(imgSize);
+	// 获取位图数据并保存到缓冲区
+	int imgSize = bitmap.bmWidth * bitmap.bmHeight * 4;  // 每个像素 4 字节 (RGBA)
+	std::vector<BYTE> imageData(imgSize);
 
-    // 创建颜色信息
-    BITMAPINFOHEADER bmiHeader = { sizeof(BITMAPINFOHEADER), bitmap.bmWidth, bitmap.bmHeight, 1, 32 };
-    BITMAPINFO bmi = { bmiHeader, { 0 } };
+	// 创建颜色信息
+	BITMAPINFOHEADER bmiHeader = { sizeof(BITMAPINFOHEADER), bitmap.bmWidth, bitmap.bmHeight, 1, 32 };
+	BITMAPINFO bmi = { bmiHeader, { 0 } };
 
-    // 获取图像数据
-    GetDIBits(hdcMem, hBitmap, 0, bitmap.bmHeight, imageData.data(), &bmi, DIB_RGB_COLORS);
+	// 获取图像数据
+	GetDIBits(hdcMem, hBitmap, 0, bitmap.bmHeight, imageData.data(), &bmi, DIB_RGB_COLORS);
 
-    // 保存图像为 BMP 文件
-    std::ofstream outFile("debug.bmp", std::ios::binary);
-    if (outFile) {
-        // BMP文件头
-        BITMAPFILEHEADER bfh;
-        bfh.bfType = 0x4D42;  // "BM" 文件标识符
-        bfh.bfReserved1 = 0;
-        bfh.bfReserved2 = 0;
-        bfh.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);  // 位图数据偏移量
-        bfh.bfSize = bfh.bfOffBits + imgSize;  // 文件大小
+	// 保存图像为 BMP 文件
+	std::ofstream outFile("debug.bmp", std::ios::binary);
+	if (outFile) {
+		// BMP文件头
+		BITMAPFILEHEADER bfh;
+		bfh.bfType = 0x4D42;  // "BM" 文件标识符
+		bfh.bfReserved1 = 0;
+		bfh.bfReserved2 = 0;
+		bfh.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);  // 位图数据偏移量
+		bfh.bfSize = bfh.bfOffBits + imgSize;  // 文件大小
 
-        // 写入文件头
-        outFile.write((char*)&bfh, sizeof(BITMAPFILEHEADER));
-        outFile.write((char*)&bmiHeader, sizeof(BITMAPINFOHEADER));
+		// 写入文件头
+		outFile.write((char*)&bfh, sizeof(BITMAPFILEHEADER));
+		outFile.write((char*)&bmiHeader, sizeof(BITMAPINFOHEADER));
 
-        // 写入位图数据
-        outFile.write((char*)imageData.data(), imgSize);
+		// 写入位图数据
+		outFile.write((char*)imageData.data(), imgSize);
 
-        outFile.close();
-        printf("图像已保存到文件：%s\n", "debug.bmp");
-    } else {
-        printf("保存图像失败！\n");
-    }
+		outFile.close();
+		//printf("图像已保存到文件：%s\n", "debug.bmp");
+	}
+	else {
+		printf("保存图像失败！\n");
+	}
 
-    // 清理资源
-    DeleteObject(hBitmap);
-    DeleteDC(hdcMem);
-    ReleaseDC(NULL, hdcScreen);
+	// 清理资源
+	DeleteObject(hBitmap);
+	DeleteDC(hdcMem);
+	ReleaseDC(NULL, hdcScreen);
 
-    return imageData;
+	return imageData;
 }
 
 int main(int argc, CHAR* argv[])
@@ -277,6 +288,9 @@ int main(int argc, CHAR* argv[])
 		client.Stop();
 		return 1;
 	}
+	else {
+		printf("图像参数发送成功\n");
+	}
 
 	// 等待服务器确认协商成功
 	if (!client.Recv()) {
@@ -284,23 +298,37 @@ int main(int argc, CHAR* argv[])
 		client.Stop();
 		return 1;
 	}
+	else {
+		printf("服务器已经确认参数\n");
+	}
+
+
+
 
 	// 协商成功，开始发送图像数据
 	while (true) {
+
 		std::vector<BYTE> imageData = CaptureScreen();
 		if (!client.SendImage(imageData)) {
 			printf("图像发送失败\n");
 			break;
 		}
+
+		// 帧率统计
+		frameCount++;  // 增加帧计数器
+		DWORD currentTime = GetTickCount();
+
+		// 每秒输出一次帧率
+		if (currentTime - lastReportTime >= 1000) {
+			printf("当前帧率: %lu FPS\n", frameCount);
+
+			// 重置统计
+			frameCount = 0;
+			lastReportTime = currentTime;
+		}
+
 	}
 
-	while (true) {
-		std::vector<BYTE> imageData = CaptureScreen();
-		if (!client.SendImage(imageData)) {
-			printf("图像发送失败\n");
-			break;
-		}
-	}
 	client.Stop();
 	return 0;
 }
