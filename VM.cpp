@@ -217,11 +217,23 @@ int main(int argc, CHAR* argv[])
 	if (!client.Start()) return 1;
 
 
-	// 协商阶段：发送分辨率、图像大小等信息
 	int width = GetSystemMetrics(SM_CXSCREEN);
 	int height = GetSystemMetrics(SM_CYSCREEN);
-	int imageSize = width * height * 4;  // 假设每个像素占用4字节（RGBA格式）
 
+	// 输出分辨率的调试信息
+	printf("屏幕宽度: %d, 屏幕高度: %d\n", width, height);
+
+	if (width == 0 || height == 0) {
+		printf("错误：无法获取屏幕分辨率！\n");
+		client.Stop();
+		return 1;
+	}
+
+	// 计算图像大小：假设每个像素4字节（RGBA格式）
+	int imageSize = width * height * 4;  // 4字节每像素（RGBA）
+
+	// 输出图像大小的调试信息
+	printf("计算出的图像大小: %d 字节\n", imageSize);
 	// 发送分辨率和图像大小
 	if (!client.Send((char*)&width)) {
 		printf("发送宽度失败\n");

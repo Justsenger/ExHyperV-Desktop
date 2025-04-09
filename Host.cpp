@@ -210,13 +210,16 @@ int main() {
 
 
 
-        int width, height, imageSize;
+        int width=0, height = 0, imageSize = 0;
 
         // 接收宽度
         int iResult = recv(ClientSocket, (char*)&width, sizeof(width), 0);
         if (iResult == SOCKET_ERROR) {
             printf("接收宽度失败: %d\n", WSAGetLastError());
             return false;
+        }
+        else {
+            printf("接收宽度: %d\n", width);
         }
 
         // 接收高度
@@ -225,12 +228,18 @@ int main() {
             printf("接收高度失败: %d\n", WSAGetLastError());
             return false;
         }
+        else {
+            printf("接收高度: %d\n", height);
+        }
 
         // 接收图像大小
         iResult = recv(ClientSocket, (char*)&imageSize, sizeof(imageSize), 0);
         if (iResult == SOCKET_ERROR) {
             printf("接收图像大小失败: %d\n", WSAGetLastError());
             return false;
+        }
+        else {
+            printf("接收图像大小: %d\n", imageSize);
         }
 
         printf("接收到协商信息：宽度 = %d, 高度 = %d, 图像大小 = %d\n", width, height, imageSize);
