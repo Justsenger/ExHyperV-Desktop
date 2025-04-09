@@ -85,7 +85,7 @@ void PrintSocketBufferSize(SOCKET ClientSocket) {
 
 
 std::vector<BYTE> ReceiveImage(SOCKET ClientSocket, int imageSize) {
-    SetSocketBufferSize(ClientSocket);
+    SetSocketBufferSize(ClientSocket); //ÉèÖÃ¸ü¸Â
     std::vector<BYTE> imageData(imageSize);
     int received = recv(ClientSocket, (char*)imageData.data(), imageSize, MSG_WAITALL);
     if (received != imageSize) {
