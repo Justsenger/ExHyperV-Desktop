@@ -88,8 +88,8 @@ std::vector<BYTE> ReceiveImage(SOCKET ClientSocket) {
     // 接收图像数据的大小
     size_t imageSize = 0;
     // 设置接收缓冲区大小为8MB
-    //SetSocketBufferSize(ClientSocket);
-    //PrintSocketBufferSize(ClientSocket);
+    SetSocketBufferSize(ClientSocket);
+    PrintSocketBufferSize(ClientSocket);
 
     int iResult = recv(ClientSocket, (char*)&imageSize, sizeof(imageSize), 0);
     if (iResult <= 0) {

@@ -168,47 +168,71 @@ private:
 
 
 // 截取屏幕并返回图像数据
+// 截取屏幕并保存图像数据
 std::vector<BYTE> CaptureScreen() {
-	// 获取屏幕的设备上下文
-	HDC hdcScreen = GetDC(NULL);
+    // 获取屏幕的设备上下文
+    HDC hdcScreen = GetDC(NULL);
 
-	// 获取屏幕宽度和高度
-	int width = GetSystemMetrics(SM_CXSCREEN);
-	int height = GetSystemMetrics(SM_CYSCREEN);
+    // 获取屏幕宽度和高度
+    int width = GetSystemMetrics(SM_CXSCREEN);
+    int height = GetSystemMetrics(SM_CYSCREEN);
 
-	// 创建内存设备上下文
-	HDC hdcMem = CreateCompatibleDC(hdcScreen);
+    // 创建内存设备上下文
+    HDC hdcMem = CreateCompatibleDC(hdcScreen);
 
-	// 创建与屏幕相同大小的位图
-	HBITMAP hBitmap = CreateCompatibleBitmap(hdcScreen, width, height);
+    // 创建与屏幕相同大小的位图
+    HBITMAP hBitmap = CreateCompatibleBitmap(hdcScreen, width, height);
 
-	// 将屏幕内容复制到位图
-	SelectObject(hdcMem, hBitmap);
-	BitBlt(hdcMem, 0, 0, width, height, hdcScreen, 0, 0, SRCCOPY);
+    // 将屏幕内容复制到位图
+    SelectObject(hdcMem, hBitmap);
+    BitBlt(hdcMem, 0, 0, width, height, hdcScreen, 0, 0, SRCCOPY);
 
-	// 获取位图的位图信息
-	BITMAP bitmap;
-	GetObject(hBitmap, sizeof(bitmap), &bitmap);
+    // 获取位图的位图信息
+    BITMAP bitmap;
+    GetObject(hBitmap, sizeof(bitmap), &bitmap);
 
-	// 获取位图数据并保存到缓冲区
-	int imgSize = bitmap.bmWidth * bitmap.bmHeight * 4;  // 每个像素 4 字节 (RGBA)
-	std::vector<BYTE> imageData(imgSize);
+    // 获取位图数据并保存到缓冲区
+    int imgSize = bitmap.bmWidth * bitmap.bmHeight * 4;  // 每个像素 4 字节 (RGBA)
+    std::vector<BYTE> imageData(imgSize);
 
-	// 创建颜色信息
-	BITMAPINFOHEADER bmiHeader = { sizeof(BITMAPINFOHEADER), bitmap.bmWidth, bitmap.bmHeight, 1, 32 };
-	BITMAPINFO bmi = { bmiHeader, { 0 } };
+    // 创建颜色信息
+    BITMAPINFOHEADER bmiHeader = { sizeof(BITMAPINFOHEADER), bitmap.bmWidth, bitmap.bmHeight, 1, 32 };
+    BITMAPINFO bmi = { bmiHeader, { 0 } };
 
-	// 获取图像数据
-	GetDIBits(hdcMem, hBitmap, 0, bitmap.bmHeight, imageData.data(), &bmi, DIB_RGB_COLORS);
+    // 获取图像数据
+    GetDIBits(hdcMem, hBitmap, 0, bitmap.bmHeight, imageData.data(), &bmi, DIB_RGB_COLORS);
 
-	// 清理资源
-	DeleteObject(hBitmap);
-	DeleteDC(hdcMem);
-	ReleaseDC(NULL, hdcScreen);
+    // 保存图像为 BMP 文件
+    std::ofstream outFile("debug.bmp", std::ios::binary);
+    if (outFile) {
+        // BMP文件头
+        BITMAPFILEHEADER bfh;
+        bfh.bfType = 0x4D42;  // "BM" 文件标识符
+        bfh.bfReserved1 = 0;
+        bfh.bfReserved2 = 0;
+        bfh.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);  // 位图数据偏移量
+        bfh.bfSize = bfh.bfOffBits + imgSize;  // 文件大小
 
-	return imageData;
+        // 写入文件头
+        outFile.write((char*)&bfh, sizeof(BITMAPFILEHEADER));
+        outFile.write((char*)&bmiHeader, sizeof(BITMAPINFOHEADER));
+
+        // 写入位图数据
+        outFile.write((char*)imageData.data(), imgSize);
+
+        outFile.close();
+        printf("图像已保存到文件：%s\n", "debug.bmp");
+    } else {
+        printf("保存图像失败！\n");
+    }
+
+    // 清理资源
+    DeleteObject(hBitmap);
+    DeleteDC(hdcMem);
+    ReleaseDC(NULL, hdcScreen);
+
+    return imageData;
 }
-
 
 int main(int argc, CHAR* argv[])
 {
