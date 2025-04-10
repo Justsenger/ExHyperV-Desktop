@@ -1,6 +1,4 @@
-﻿  Host.cpp
-C:\Github\ExHyperV-Desktop\Host.cpp(44,1): warning C4002: 类函数宏的调用“DEFINE_GUID”参数过多
-C:\Github\ExHyperV-Desktop\Host.cpp(46,1): warning C4002: 类函数宏的调用“DEFINE_GUID”参数过多
-C:\Github\ExHyperV-Desktop\Host.cpp(185,52): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据
-C:\Github\ExHyperV-Desktop\Host.cpp(190,1): warning C4715: “Getset”: 不是所有的控件路径都返回值
-  ExHyperV-Desktop.vcxproj -> C:\Github\ExHyperV-Desktop\x64\Debug\ExHyperV-Desktop.exe
+﻿  VM.cpp
+C:\Users\Administrator\Documents\GitHub\ExHyperV-Desktop\VM.cpp(123,50): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据
+C:\Users\Administrator\Documents\GitHub\ExHyperV-Desktop\VM.cpp(155,17): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+  ExHyperV-Desktop.vcxproj -> C:\Users\Administrator\Documents\GitHub\ExHyperV-Desktop\x64\Debug\ExHyperV-Desktop.exe

@@ -43,7 +43,7 @@ public:
 		// 初始化GUID
 		const wchar_t* clsid_str = L"{a42e7cda-d03f-480c-9cc2-a4de20abb878}"; // 请查阅文档，这个是所有都能接收
 		CLSIDFromString(clsid_str, &VmID);
-		clsid_str = L"{1f6be6bc-3e37-4d4a-97e3-46e7a5bdf739}";
+		clsid_str = L"{2b174636-bc38-474e-9396-b87f3877c1e8}";
 		CLSIDFromString(clsid_str, &ServiceID); //服务GUID
 
 		CONST GUID* vmId = &VmID;
@@ -245,6 +245,130 @@ std::vector<BYTE> CaptureScreen() {
 	return imageData;
 }
 
+#include <dxgi.h>
+#include <d3d11.h>
+#include <dxgi1_2.h>
+
+IDXGIOutputDuplication* g_pDeskDupl = nullptr;
+ID3D11Device* g_d3dDevice = nullptr;
+ID3D11DeviceContext* g_d3dContext = nullptr;
+IDXGIAdapter1* g_dxgiAdapter = nullptr;
+IDXGIOutput* g_dxgiOutput = nullptr;
+
+
+
+HRESULT InitD3D() {
+	if (g_d3dDevice && g_d3dContext) {
+		return S_OK; // 如果设备和上下文已经创建，直接返回
+	}
+
+	D3D_FEATURE_LEVEL featureLevel;
+	HRESULT hr = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, nullptr, 0, D3D11_SDK_VERSION, &g_d3dDevice, &featureLevel, &g_d3dContext);
+	if (FAILED(hr)) {
+		return hr;
+	}
+
+	IDXGIDevice* dxgiDevice = nullptr;
+	hr = g_d3dDevice->QueryInterface(__uuidof(IDXGIDevice), (void**)&dxgiDevice);
+	if (FAILED(hr)) {
+		return hr;
+	}
+
+	hr = dxgiDevice->GetAdapter((IDXGIAdapter**)&g_dxgiAdapter);
+	dxgiDevice->Release();
+	if (FAILED(hr)) {
+		return hr;
+	}
+
+	hr = g_dxgiAdapter->EnumOutputs(0, &g_dxgiOutput);  // 获取输出（显示器）
+	if (FAILED(hr)) {
+		return hr;
+	}
+
+	// 创建输出复制接口
+	IDXGIOutput1* g_dxgiOutput1 = nullptr;
+	hr = g_dxgiOutput->QueryInterface(__uuidof(IDXGIOutput1), (void**)&g_dxgiOutput1);
+	if (FAILED(hr)) {
+		return hr;
+	}
+
+	hr = g_dxgiOutput1->DuplicateOutput(g_d3dDevice, &g_pDeskDupl);
+	if (FAILED(hr)) {
+		return hr;
+	}
+
+	return S_OK;
+}
+
+std::vector<BYTE> CaptureScreenD3D() {
+	if (!g_pDeskDupl) {
+		std::cerr << "桌面复制接口未初始化!" << std::endl;
+		return {}; // 确保桌面复制已初始化
+	}
+
+	// 捕获帧
+	IDXGIResource* pDesktopResource = nullptr;
+	DXGI_OUTDUPL_FRAME_INFO frameInfo = {};
+	HRESULT hr = g_pDeskDupl->AcquireNextFrame(500, &frameInfo, &pDesktopResource);
+	if (FAILED(hr)) {
+		std::cerr << "无法获取下一帧!" << std::endl;
+		return {}; // 捕获帧失败
+	}
+
+	// 获取捕获帧的表面
+	ID3D11Texture2D* pCapturedFrame = nullptr;
+	hr = pDesktopResource->QueryInterface(__uuidof(ID3D11Texture2D), (void**)&pCapturedFrame);
+	pDesktopResource->Release();
+	if (FAILED(hr)) {
+		std::cerr << "无法查询捕获的帧!" << std::endl;
+		return {}; // 查询纹理失败
+	}
+
+	// 检查纹理的创建描述
+	D3D11_TEXTURE2D_DESC desc;
+	pCapturedFrame->GetDesc(&desc);
+	std::cout << "捕获帧大小: " << desc.Width << "x" << desc.Height << std::endl;
+
+	// 映射纹理到 CPU 内存
+	D3D11_MAPPED_SUBRESOURCE mappedResource = {};
+	hr = g_d3dContext->Map(pCapturedFrame, 0, D3D11_MAP_READ, 0, &mappedResource);
+	if (FAILED(hr)) {
+		std::cerr << "映射捕获帧失败! HRESULT: " << std::hex << hr << std::dec << std::endl;
+		pCapturedFrame->Release();
+		return {}; // 映射失败
+	}
+
+	// 从映射的资源中获取数据
+	int width = 1920;
+	int height = 1080;
+	std::vector<BYTE> imageData;
+	imageData.resize(width * height * 4); // RGBA 格式
+	memcpy(imageData.data(), mappedResource.pData, width * height * 4);
+
+	g_d3dContext->Unmap(pCapturedFrame, 0);
+	pCapturedFrame->Release();
+
+	// 释放捕获的帧
+	g_pDeskDupl->ReleaseFrame();
+
+	return imageData;
+}
+
+
+void SaveDataAsBinary(const std::vector<BYTE>& data, const std::string& filename)
+{
+	std::ofstream outFile(filename, std::ios::binary);
+	if (!outFile.is_open()) {
+		// 打开文件失败，可根据需要添加错误处理
+		return;
+	}
+
+	// 将整个 data 写入二进制文件
+	outFile.write(reinterpret_cast<const char*>(data.data()), data.size());
+	outFile.close();
+}
+
+
 int main(int argc, CHAR* argv[])
 {
 	std::string msg;
@@ -308,11 +432,19 @@ int main(int argc, CHAR* argv[])
 	// 协商成功，开始发送图像数据
 	while (true) {
 
-		std::vector<BYTE> imageData = CaptureScreen();
+
+		HRESULT hr = InitD3D();
+
+		std::vector<BYTE> imageData = CaptureScreenD3D();
+
+		//SaveDataAsBinary(imageData, "raw_screenshot.bin");
+
 		if (!client.SendImage(imageData)) {
 			printf("图像发送失败\n");
 			break;
 		}
+
+		Sleep(1000);
 
 		// 帧率统计
 		frameCount++;  // 增加帧计数器

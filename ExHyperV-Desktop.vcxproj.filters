@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Host.cpp">
+    <ClCompile Include="VM.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
