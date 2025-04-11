@@ -43,7 +43,7 @@ public:
 		// 初始化GUID
 		const wchar_t* clsid_str = L"{a42e7cda-d03f-480c-9cc2-a4de20abb878}"; // 请查阅文档，这个是所有都能接收
 		CLSIDFromString(clsid_str, &VmID);
-		clsid_str = L"{2b174636-bc38-474e-9396-b87f3877c1e8}";
+		clsid_str = L"{1f6be6bc-3e37-4d4a-97e3-46e7a5bdf739}";
 		CLSIDFromString(clsid_str, &ServiceID); //服务GUID
 
 		CONST GUID* vmId = &VmID;
@@ -177,78 +177,15 @@ private:
 };
 
 
-// 截取屏幕并返回图像数据
-// 截取屏幕并保存图像数据
-std::vector<BYTE> CaptureScreen() {
-	// 获取屏幕的设备上下文
-	HDC hdcScreen = GetDC(NULL);
-
-	// 获取屏幕宽度和高度
-	int width = GetSystemMetrics(SM_CXSCREEN);
-	int height = GetSystemMetrics(SM_CYSCREEN);
-
-	// 创建内存设备上下文
-	HDC hdcMem = CreateCompatibleDC(hdcScreen);
-
-	// 创建与屏幕相同大小的位图
-	HBITMAP hBitmap = CreateCompatibleBitmap(hdcScreen, width, height);
-
-	// 将屏幕内容复制到位图
-	SelectObject(hdcMem, hBitmap);
-	BitBlt(hdcMem, 0, 0, width, height, hdcScreen, 0, 0, SRCCOPY);
-
-	// 获取位图的位图信息
-	BITMAP bitmap;
-	GetObject(hBitmap, sizeof(bitmap), &bitmap);
-
-	// 获取位图数据并保存到缓冲区
-	int imgSize = bitmap.bmWidth * bitmap.bmHeight * 4;  // 每个像素 4 字节 (RGBA)
-	std::vector<BYTE> imageData(imgSize);
-
-	// 创建颜色信息
-	BITMAPINFOHEADER bmiHeader = { sizeof(BITMAPINFOHEADER), bitmap.bmWidth, bitmap.bmHeight, 1, 32 };
-	BITMAPINFO bmi = { bmiHeader, { 0 } };
-
-	// 获取图像数据
-	GetDIBits(hdcMem, hBitmap, 0, bitmap.bmHeight, imageData.data(), &bmi, DIB_RGB_COLORS);
-
-	// 保存图像为 BMP 文件
-	std::ofstream outFile("debug.bmp", std::ios::binary);
-	if (outFile) {
-		// BMP文件头
-		BITMAPFILEHEADER bfh;
-		bfh.bfType = 0x4D42;  // "BM" 文件标识符
-		bfh.bfReserved1 = 0;
-		bfh.bfReserved2 = 0;
-		bfh.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);  // 位图数据偏移量
-		bfh.bfSize = bfh.bfOffBits + imgSize;  // 文件大小
-
-		// 写入文件头
-		outFile.write((char*)&bfh, sizeof(BITMAPFILEHEADER));
-		outFile.write((char*)&bmiHeader, sizeof(BITMAPINFOHEADER));
-
-		// 写入位图数据
-		outFile.write((char*)imageData.data(), imgSize);
-
-		outFile.close();
-		//printf("图像已保存到文件：%s\n", "debug.bmp");
-	}
-	else {
-		printf("保存图像失败！\n");
-	}
-
-	// 清理资源
-	DeleteObject(hBitmap);
-	DeleteDC(hdcMem);
-	ReleaseDC(NULL, hdcScreen);
-
-	return imageData;
-}
-
+#include <iostream>
+#include <vector>
+#include <windows.h>
 #include <dxgi.h>
 #include <d3d11.h>
 #include <dxgi1_2.h>
+#include <fstream>
 
+// 声明全局变量
 IDXGIOutputDuplication* g_pDeskDupl = nullptr;
 ID3D11Device* g_d3dDevice = nullptr;
 ID3D11DeviceContext* g_d3dContext = nullptr;
@@ -257,6 +194,7 @@ IDXGIOutput* g_dxgiOutput = nullptr;
 
 
 
+// 初始化 D3D 设备和桌面复制接口
 HRESULT InitD3D() {
 	if (g_d3dDevice && g_d3dContext) {
 		return S_OK; // 如果设备和上下文已经创建，直接返回
@@ -300,18 +238,23 @@ HRESULT InitD3D() {
 	return S_OK;
 }
 
+
+// 捕获屏幕内容并返回二进制数据
 std::vector<BYTE> CaptureScreenD3D() {
 	if (!g_pDeskDupl) {
 		std::cerr << "桌面复制接口未初始化!" << std::endl;
-		return {}; // 确保桌面复制已初始化
+		return {};
 	}
 
 	// 捕获帧
 	IDXGIResource* pDesktopResource = nullptr;
 	DXGI_OUTDUPL_FRAME_INFO frameInfo = {};
-	HRESULT hr = g_pDeskDupl->AcquireNextFrame(500, &frameInfo, &pDesktopResource);
+	HRESULT hr = g_pDeskDupl->AcquireNextFrame(0, &frameInfo, &pDesktopResource);
+
+
+
 	if (FAILED(hr)) {
-		std::cerr << "无法获取下一帧!" << std::endl;
+		//std::cerr << "无法获取下一帧! HRESULT: " << std::hex << hr << std::dec << std::endl;
 		return {}; // 捕获帧失败
 	}
 
@@ -321,38 +264,91 @@ std::vector<BYTE> CaptureScreenD3D() {
 	pDesktopResource->Release();
 	if (FAILED(hr)) {
 		std::cerr << "无法查询捕获的帧!" << std::endl;
-		return {}; // 查询纹理失败
+		return {};
 	}
 
-	// 检查纹理的创建描述
-	D3D11_TEXTURE2D_DESC desc;
-	pCapturedFrame->GetDesc(&desc);
-	std::cout << "捕获帧大小: " << desc.Width << "x" << desc.Height << std::endl;
+	// 获取纹理的描述信息
+	D3D11_TEXTURE2D_DESC desc0;
+	pCapturedFrame->GetDesc(&desc0);
 
-	// 映射纹理到 CPU 内存
-	D3D11_MAPPED_SUBRESOURCE mappedResource = {};
-	hr = g_d3dContext->Map(pCapturedFrame, 0, D3D11_MAP_READ, 0, &mappedResource);
-	if (FAILED(hr)) {
-		std::cerr << "映射捕获帧失败! HRESULT: " << std::hex << hr << std::dec << std::endl;
+	// 输出捕获帧的详细信息
+	//std::cout << "Captured Frame Texture Description:" << std::endl;
+	//std::cout << "Width: " << desc0.Width << std::endl;
+	//std::cout << "Height: " << desc0.Height << std::endl;
+	//std::cout << "MipLevels: " << desc0.MipLevels << std::endl;
+	//std::cout << "ArraySize: " << desc0.ArraySize << std::endl;
+	//std::cout << "Format: " << desc0.Format << std::endl;  // 打印格式枚举值
+	//std::cout << "Usage: " << desc0.Usage << std::endl;
+	//std::cout << "BindFlags: " << desc0.BindFlags << std::endl;
+	//std::cout << "CPUAccessFlags: " << desc0.CPUAccessFlags << std::endl;
+	//std::cout << "MiscFlags: " << desc0.MiscFlags << std::endl;
+
+	// 创建目标纹理，使用支持映射的格式（B8G8R8A8_UNORM）
+	D3D11_TEXTURE2D_DESC desc = desc0;
+	desc.Usage = D3D11_USAGE_STAGING;  // 设置为 D3D11_USAGE_STAGING，允许映射
+	desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;  // 允许读取
+	desc.BindFlags = 0;  // 不进行绑定
+	desc.SampleDesc.Count = 1;  // 强制设置为单采样
+	desc.SampleDesc.Quality = 0;  // 质量等级设为0
+	desc.MiscFlags = 0;  // 设置为0，不使用其他功能
+	//desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;  // 设置目标格式
+
+	// 打印目标纹理的描述
+	//std::cout << "Target Texture Description:" << std::endl;
+	//std::cout << "Width: " << desc.Width << std::endl;
+	//std::cout << "Height: " << desc.Height << std::endl;
+	//std::cout << "MipLevels: " << desc.MipLevels << std::endl;
+	//std::cout << "ArraySize: " << desc.ArraySize << std::endl;
+	//std::cout << "Format: " << desc.Format << std::endl;
+	//std::cout << "Usage: " << desc.Usage << std::endl;
+	//std::cout << "BindFlags: " << desc.BindFlags << std::endl;
+	//std::cout << "CPUAccessFlags: " << desc.CPUAccessFlags << std::endl;
+	//std::cout << "MiscFlags: " << desc.MiscFlags << std::endl;
+
+	// 创建目标纹理
+	ID3D11Texture2D* pConvertedTexture = nullptr;
+	HRESULT hr2 = g_d3dDevice->CreateTexture2D(&desc, nullptr, &pConvertedTexture);
+	if (FAILED(hr2)) {
+		std::cerr << "创建目标纹理失败! HRESULT: " << std::hex << hr2 << std::dec << std::endl;
 		pCapturedFrame->Release();
-		return {}; // 映射失败
+		return {};  // 创建目标纹理失败
 	}
 
-	// 从映射的资源中获取数据
-	int width = 1920;
-	int height = 1080;
+	// 复制捕获帧到目标纹理
+	g_d3dContext->CopyResource(pConvertedTexture, pCapturedFrame);
+
+	// 将纹理展开为数据以便读取
+	D3D11_MAPPED_SUBRESOURCE mappedResource = {};
+	hr = g_d3dContext->Map(pConvertedTexture, 0, D3D11_MAP_READ, 0, &mappedResource);
+	if (FAILED(hr)) {
+		std::cerr << "映射纹理失败! HRESULT: " << std::hex << hr << std::dec << std::endl;
+		pCapturedFrame->Release();
+		pConvertedTexture->Release();
+		return {};  // 映射失败
+	}
+
+	// 获取数据并保存为二进制
+	int width = static_cast<int>(desc.Width);
+	int height = static_cast<int>(desc.Height);
+
 	std::vector<BYTE> imageData;
-	imageData.resize(width * height * 4); // RGBA 格式
+	imageData.resize(width * height * 4); // 4 字节每像素（RGBA 格式）
+
+	// 拷贝纹理数据
 	memcpy(imageData.data(), mappedResource.pData, width * height * 4);
 
-	g_d3dContext->Unmap(pCapturedFrame, 0);
+	g_d3dContext->Unmap(pConvertedTexture, 0);
 	pCapturedFrame->Release();
+	pConvertedTexture->Release();
 
 	// 释放捕获的帧
 	g_pDeskDupl->ReleaseFrame();
 
 	return imageData;
+
+
 }
+
 
 
 void SaveDataAsBinary(const std::vector<BYTE>& data, const std::string& filename)
@@ -371,6 +367,8 @@ void SaveDataAsBinary(const std::vector<BYTE>& data, const std::string& filename
 
 int main(int argc, CHAR* argv[])
 {
+
+	//Sleep(10000);
 	std::string msg;
 	Client client;
 	if (!client.Start()) return 1;
@@ -433,18 +431,24 @@ int main(int argc, CHAR* argv[])
 	while (true) {
 
 
+
+		// 初始化 D3D 设备
 		HRESULT hr = InitD3D();
+		if (FAILED(hr)) {
+			std::cerr << "D3D 初始化失败! HRESULT: " << std::hex << hr << std::dec << std::endl;
+			return -1;
+		}
 
 		std::vector<BYTE> imageData = CaptureScreenD3D();
 
-		//SaveDataAsBinary(imageData, "raw_screenshot.bin");
+		SaveDataAsBinary(imageData, "raw_screenshot.bin");
 
 		if (!client.SendImage(imageData)) {
 			printf("图像发送失败\n");
 			break;
 		}
 
-		Sleep(1000);
+		Sleep(1); //帧率控制
 
 		// 帧率统计
 		frameCount++;  // 增加帧计数器
@@ -458,7 +462,7 @@ int main(int argc, CHAR* argv[])
 			frameCount = 0;
 			lastReportTime = currentTime;
 		}
-
+		//Sleep(10000);
 	}
 
 	client.Stop();

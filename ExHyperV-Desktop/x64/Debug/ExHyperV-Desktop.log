@@ -1,4 +1,4 @@
 ﻿  VM.cpp
-C:\Users\Administrator\Documents\GitHub\ExHyperV-Desktop\VM.cpp(123,50): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据
-C:\Users\Administrator\Documents\GitHub\ExHyperV-Desktop\VM.cpp(155,17): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
-  ExHyperV-Desktop.vcxproj -> C:\Users\Administrator\Documents\GitHub\ExHyperV-Desktop\x64\Debug\ExHyperV-Desktop.exe
+C:\Users\sa\Documents\GitHub\ExHyperV-Desktop\VM.cpp(123,50): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据
+C:\Users\sa\Documents\GitHub\ExHyperV-Desktop\VM.cpp(155,17): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+  ExHyperV-Desktop.vcxproj -> C:\Users\sa\Documents\GitHub\ExHyperV-Desktop\x64\Debug\ExHyperV-Desktop.exe
